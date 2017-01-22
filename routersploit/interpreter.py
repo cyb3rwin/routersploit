@@ -1,4 +1,5 @@
 from __future__ import print_function
+
 import os
 import sys
 import itertools
@@ -9,6 +10,11 @@ from routersploit.printer import PrinterThread, printer_queue
 from routersploit.exceptions import RoutersploitException
 from routersploit.exploits import GLOBAL_OPTS
 from routersploit import utils
+
+try:
+    input = raw_input
+except NameError:  # Python 3.x
+    pass
 
 if sys.platform == "darwin":
     import gnureadline as readline
@@ -80,7 +86,7 @@ class BaseInterpreter(object):
         printer_queue.join()
         while True:
             try:
-                command, args = self.parse_line(raw_input(self.prompt))
+                command, args = self.parse_line(input(self.prompt))
                 if not command:
                     continue
                 command_handler = self.get_command_handler(command)
@@ -277,7 +283,7 @@ class RoutersploitInterpreter(BaseInterpreter):
         try:
             self.current_module = utils.import_exploit(module_path)()
         except RoutersploitException as err:
-            utils.print_error(err.message)
+            utils.print_error(str(err))
 
     @utils.stop_after(2)
     def complete_use(self, text, *args, **kwargs):
@@ -335,7 +341,7 @@ class RoutersploitInterpreter(BaseInterpreter):
             del GLOBAL_OPTS[key]
         except KeyError:
             utils.print_error("You can't unset global option '{}'.\n"
-                              "Available global options: {}".format(key, GLOBAL_OPTS.keys()))
+                              "Available global options: {}".format(key, list(GLOBAL_OPTS.keys())))
         else:
             utils.print_success({key: value})
 
@@ -344,7 +350,7 @@ class RoutersploitInterpreter(BaseInterpreter):
         if text:
             return [' '.join((attr, "")) for attr in GLOBAL_OPTS.keys() if attr.startswith(text)]
         else:
-            return GLOBAL_OPTS.keys()
+            return list(GLOBAL_OPTS.keys())
 
     @utils.module_required
     def get_opts(self, *args):
@@ -372,8 +378,8 @@ class RoutersploitInterpreter(BaseInterpreter):
 
     @utils.module_required
     def _show_options(self, *args, **kwargs):
-        target_opts = {'port', 'target'}
-        module_opts = set(self.current_module.options) - target_opts
+        target_opts = ['target', 'port']
+        module_opts = [opt for opt in self.current_module.options if opt not in target_opts]
         headers = ("Name", "Current settings", "Description")
 
         utils.print_info('\nTarget options:')
